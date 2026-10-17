@@ -12,6 +12,7 @@ Danh sách toàn bộ tài liệu được ghi sẵn trong HTML để Google tì
 import csv
 import html
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -24,6 +25,7 @@ MO_TA = ("Tra cứu miễn phí tài liệu sửa chữa xe nâng, cẩu, máy x
 ZALO = "https://zalo.me/0384560508"            # <- link Zalo của anh
 FORM_YEU_CAU = ""                               # (tuỳ chọn) link Google Form "Yêu cầu tài liệu"
 URL_WEB = "https://vinh-hung.github.io/ThuVienTaiLieufree/"   # <- địa chỉ trang GitHub Pages
+GOOGLE_VERIFY = ""   # <- mã xác minh Google Search Console (phần content="..." của thẻ meta), để trống nếu chưa có
 DATA_URL = "https://script.google.com/macros/s/AKfycbw22TQMEXXbpHpy1BkC_uxJ-hNotLB0C2kdzh2sEdwJA6G3kZcJHUBgUXXgAKQCO6ssIg/exec"   # <- link ứng dụng web Apps Script
 # ===================================================================
 
@@ -80,7 +82,8 @@ def doc_csv(src):
             trang = 0
         it = {"id": r.get("ID", ""), "t": tieu_de, "h": r.get("Hãng", ""), "m": model, "may": may, "tl": tl,
               "ht": ht, "nn": r.get("Ngôn ngữ") or "EN", "p": trang, "scan": r.get("Dạng PDF") == "Scan",
-              "kw": r.get("Từ khóa VN", ""), "c": r.get("Mã áp dụng", ""), "f": fid}
+              "kw": r.get("Từ khóa VN", ""), "c": r.get("Mã áp dụng", ""), "f": fid,
+              "d": (r.get("Ngày thêm") or "")[:10]}
         it["s"] = bo_dau(" ".join([it["t"], it["h"], it["m"], may, tl, ht, it["kw"], it["c"], r.get("Tên file", ""),
                                    r.get("Thư mục Drive", "")]))
         items.append(it)
@@ -91,7 +94,7 @@ def doc_csv(src):
 def li(it):
     e = html.escape
     meta = " · ".join(x for x in (it["id"], it["may"], it["tl"], f'{it["p"]} trang' if it["p"] else "", NN.get(it["nn"], it["nn"])) if x)
-    return (f'<li class="item" data-id="{e(it["id"])}"><a href="?id={e(it["id"])}" class="open">'
+    return (f'<li class="item" data-id="{e(it["id"])}"><a href="d/{e(it["id"])}.html" class="open">'
             f'<span class="tt">{e(it["t"])}</span><span class="meta">{e(meta)}</span>'
             + (f'<span class="codes">Áp dụng: {e(it["c"])}</span>' if it["c"] else "")
             + f'<span class="kw">{e(it["kw"])}</span></a></li>')
@@ -104,7 +107,7 @@ TEMPLATE = r"""<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__TEN__</title>
 <meta name="description" content="__MOTA__">
-<link rel="canonical" href="__URL__">
+<link rel="canonical" href="__URL__">__VERIFY__
 <meta property="og:title" content="__TEN__"><meta property="og:description" content="__MOTA__">
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#667085;--line:#e4e7ec;--acc:#c2410c;--acc2:#fff3ec;--chip:#eef1f5}
@@ -243,6 +246,103 @@ const id0 = new URLSearchParams(location.search).get('id'); if (id0) openDoc(id0
 """
 
 
+def verify_tag():
+    return f'\n<meta name="google-site-verification" content="{html.escape(GOOGLE_VERIFY)}">' if GOOGLE_VERIFY else ""
+
+
+DOC_PAGE = r"""<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<meta name="description" content="__DESC__">
+<link rel="canonical" href="__CANON__">
+<meta property="og:title" content="__TITLE__"><meta property="og:description" content="__DESC__"><meta property="og:type" content="article">
+<script type="application/ld+json">__LD__</script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#667085;--line:#e4e7ec;--acc:#c2410c;--chip:#eef1f5}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b2029;--ink:#e8ebf0;--mute:#98a2b3;--line:#2b3240;--acc:#fb923c;--chip:#252b36}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.w{max-width:1000px;margin:auto;padding:16px}nav{font-size:13px;color:var(--mute)}nav a{color:var(--mute)}
+h1{font-size:22px;margin:8px 0}.code{font:600 13px ui-monospace,Consolas,monospace;background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+table{border-collapse:collapse;margin:10px 0;font-size:14px}td{padding:4px 12px 4px 0;vertical-align:top}td:first-child{color:var(--mute);white-space:nowrap}
+.btn{display:inline-block;border:0;border-radius:8px;padding:9px 14px;font-size:14px;cursor:pointer;text-decoration:none;background:var(--acc);color:#fff;margin:6px 6px 6px 0}
+.btn.g{background:var(--chip);color:var(--ink)}
+iframe{width:100%;height:80vh;border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:10px}
+ul{padding-left:18px}li{margin:3px 0}a{color:var(--acc)}footer{color:var(--mute);font-size:12px;margin-top:24px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:92vw;background:#1d2330;color:#fff;padding:12px 16px;border-radius:10px;display:none;z-index:9}
+</style></head><body><div class="w">
+<nav><a href="../">⌂ Trang chủ</a> › __MAY__ › __HANG__</nav>
+<h1>__H1__</h1>
+<p><span class="code">__ID__</span> __INTRO__</p>
+<table>__ROWS__</table>
+<a class="btn g" href="../">⌂ Trang chủ</a><button class="btn" id="dl">Liên hệ Zalo để download</button>
+<iframe src="https://drive.google.com/file/d/__FID__/preview" loading="lazy" title="Xem tài liệu __ID__"></iframe>
+__RELATED__
+<footer>Tài liệu thuộc bản quyền của nhà sản xuất, chỉ dùng để tham khảo. Thông số an toàn, áp suất, lực siết luôn đối chiếu bản gốc.</footer>
+</div><div id="toast"></div>
+<script>
+document.getElementById('dl').onclick=function(){
+  var msg='Chào anh, tôi cần download tài liệu mã __ID__: __H1JS__\n'+location.href;
+  window.open('__ZALO__','_blank','noopener');
+  var t=document.getElementById('toast');
+  function show(ok){t.innerHTML=ok?'Đã sao chép yêu cầu tài liệu <b>__ID__</b>. Trong Zalo, dán (Ctrl+V hoặc nhấn giữ → Dán) rồi gửi.':'Khi nhắn Zalo, vui lòng ghi mã tài liệu <b>__ID__</b>.';t.style.display='block';setTimeout(function(){t.style.display='none'},12000);}
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(msg).then(function(){show(true)},function(){show(false)});}else show(false);
+};
+</script></body></html>
+"""
+
+
+def write_doc_pages(items):
+    """Mỗi tài liệu 1 trang riêng d/<ID>.html (Google tìm theo từng model/mã) + sitemap.xml + robots.txt."""
+    e = html.escape
+    os.makedirs("d", exist_ok=True)
+    keep = set()
+    base = URL_WEB.rstrip("/") + "/"
+    for it in items:
+        codes = [c.strip() for c in it["c"].split(",") if c.strip()]
+        name = " ".join(x for x in (it["h"], it["m"]) if x)
+        h1 = f'{name} – {it["tl"]}' + (f' {it["ht"]}' if it["ht"] else "") + f' ({it["may"]})'
+        title = f'{h1}' + (f' – {", ".join(codes[:6])}' if codes else "") + " | Tài liệu sửa chữa"
+        desc = (f'Tài liệu {it["tl"].lower()} {it["may"].lower()} {name}'
+                + (f', áp dụng: {", ".join(codes[:12])}' if codes else "")
+                + f'. {it["p"]} trang, {NN.get(it["nn"], it["nn"]).lower()}. Xem miễn phí, nhận dịch tiếng Việt.')
+        rows = [("Hãng", it["h"]), ("Model", it["m"] or "—"), ("Loại máy", it["may"]), ("Loại tài liệu", it["tl"]),
+                ("Hệ thống", it["ht"]), ("Áp dụng cho", ", ".join(codes)), ("Số trang", str(it["p"] or "")),
+                ("Ngôn ngữ", NN.get(it["nn"], it["nn"])), ("Từ khóa", it["kw"])]
+        rows_html = "".join(f"<tr><td>{e(k)}</td><td>{e(v)}</td></tr>" for k, v in rows if v)
+        rel = [x for x in items if x["id"] != it["id"] and x["h"] == it["h"] and x["may"] == it["may"]][:12]
+        if len(rel) < 6:
+            rel += [x for x in items if x["id"] != it["id"] and x["may"] == it["may"] and x not in rel][:12 - len(rel)]
+        rel_html = ("<h2 style='font-size:17px;margin-top:22px'>Tài liệu liên quan</h2><ul>"
+                    + "".join(f'<li><a href="{e(x["id"])}.html">{e(x["t"])}</a></li>' for x in rel) + "</ul>") if rel else ""
+        ld = json.dumps({"@context": "https://schema.org", "@type": "DigitalDocument", "name": h1, "description": desc,
+                         "inLanguage": it["nn"].lower(), "url": base + f'd/{it["id"]}.html',
+                         "keywords": ", ".join(codes + [it["kw"]])}, ensure_ascii=False)
+        intro = (f'Tài liệu {e(it["tl"].lower())} cho {e(it["may"].lower())} {e(name)}'
+                 + (f', áp dụng cho các model/động cơ: <b>{e(", ".join(codes))}</b>' if codes else "") + ".")
+        page = (DOC_PAGE.replace("__TITLE__", e(title)).replace("__DESC__", e(desc))
+                .replace("__CANON__", e(base + f'd/{it["id"]}.html')).replace("__LD__", ld.replace("</", "<\\/"))
+                .replace("__MAY__", e(it["may"])).replace("__HANG__", e(it["h"])).replace("__H1__", e(h1))
+                .replace("__H1JS__", e(h1).replace("'", " ")).replace("__INTRO__", intro).replace("__ROWS__", rows_html)
+                .replace("__FID__", e(it["f"])).replace("__RELATED__", rel_html)
+                .replace("__ZALO__", e(ZALO)).replace("__ID__", e(it["id"])))
+        fn = f'{it["id"]}.html'
+        keep.add(fn)
+        with open(os.path.join("d", fn), "w", encoding="utf-8") as f:
+            f.write(page)
+    for fn in os.listdir("d"):   # xóa trang của tài liệu đã gỡ
+        if fn.endswith(".html") and fn not in keep:
+            os.remove(os.path.join("d", fn))
+    today = date.today().isoformat()
+    urls = [f"<url><loc>{e(base)}</loc><lastmod>{today}</lastmod><priority>1.0</priority></url>"]
+    urls += [f'<url><loc>{e(base)}d/{e(it["id"])}.html</loc><lastmod>{it["d"] or today}</lastmod></url>' for it in items]
+    with open("sitemap.xml", "w", encoding="utf-8") as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                + "\n".join(urls) + "\n</urlset>\n")
+    with open("robots.txt", "w", encoding="utf-8") as f:
+        f.write(f"User-agent: *\nAllow: /\nSitemap: {base}sitemap.xml\n")
+    return len(items)
+
+
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else DATA_URL
     if not src:
@@ -253,14 +353,15 @@ def main():
     data = [{k: v for k, v in it.items()} for it in items]
     page = (TEMPLATE.replace("__TEN_JS__", TEN_WEB.replace("'", ""))
             .replace("__TEN__", html.escape(TEN_WEB)).replace("__MOTA__", html.escape(MO_TA))
-            .replace("__URL__", html.escape(URL_WEB)).replace("__ZALO__", html.escape(ZALO))
+            .replace("__URL__", html.escape(URL_WEB)).replace("__VERIFY__", verify_tag()).replace("__ZALO__", html.escape(ZALO))
             .replace("__FORM__", f' hoặc <a href="{html.escape(FORM_YEU_CAU)}" target="_blank" rel="noopener">gửi form</a>.' if FORM_YEU_CAU else ".")
             .replace("__SO__", str(len(items))).replace("__NGAY__", date.today().strftime("%d/%m/%Y"))
             .replace("__LIST__", "\n".join(li(it) for it in items))
             .replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":"))))
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(page)
-    print(f"Đã tạo index.html với {len(items)} tài liệu ({len(page) / 1024:.0f} KB).")
+    n = write_doc_pages(items)
+    print(f"Đã tạo index.html với {len(items)} tài liệu ({len(page) / 1024:.0f} KB), {n} trang riêng, sitemap.xml, robots.txt.")
 
 
 if __name__ == "__main__":
