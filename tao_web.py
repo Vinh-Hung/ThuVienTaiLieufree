@@ -25,7 +25,7 @@ MO_TA = ("Tra cứu miễn phí tài liệu sửa chữa xe nâng, cẩu, máy x
 ZALO = "https://zalo.me/0384560508"            # <- link Zalo của anh
 FORM_YEU_CAU = ""                               # (tuỳ chọn) link Google Form "Yêu cầu tài liệu"
 URL_WEB = "https://vinh-hung.github.io/ThuVienTaiLieufree/"   # <- địa chỉ trang GitHub Pages
-GOOGLE_VERIFY = ""   # <- mã xác minh Google Search Console (phần content="..." của thẻ meta), để trống nếu chưa có
+GOOGLE_VERIFY = "jnCm0WrTvWY0uuFa-5qZdpvNlcECUzXsN5oYfW4FJMw"   # <- mã xác minh Google Search Console (phần content="..." của thẻ meta), để trống nếu chưa có
 DATA_URL = "https://script.google.com/macros/s/AKfycbw22TQMEXXbpHpy1BkC_uxJ-hNotLB0C2kdzh2sEdwJA6G3kZcJHUBgUXXgAKQCO6ssIg/exec"   # <- link ứng dụng web Apps Script
 # ===================================================================
 
