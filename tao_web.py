@@ -24,7 +24,7 @@ MO_TA = ("Tra cứu miễn phí tài liệu sửa chữa xe nâng, cẩu, máy x
 ZALO = "https://zalo.me/0384560508"            # <- link Zalo của anh
 FORM_YEU_CAU = ""                               # (tuỳ chọn) link Google Form "Yêu cầu tài liệu"
 URL_WEB = "https://vinh-hung.github.io/ThuVienTaiLieufree/"   # <- địa chỉ trang GitHub Pages
-DATA_URL = "https://script.google.com/macros/s/AKfycbw22TQMEXXbpHpy1BkC_uxJ-hNotLB0C2kdzh2sEdwJA6G3kZcJHUBgUXXgAKQCO6ssIg/exec"   # <- link ứng dụng web Apps Script (dạng https://script.google.com/macros/s/.../exec)
+DATA_URL = "https://script.google.com/macros/s/AKfycbw22TQMEXXbpHpy1BkC_uxJ-hNotLB0C2kdzh2sEdwJA6G3kZcJHUBgUXXgAKQCO6ssIg/exec"   # <- link ứng dụng web Apps Script
 # ===================================================================
 
 MAY = {"XeNang": "Xe nâng", "Cau": "Cẩu", "MayXuc": "Máy xúc", "MayXucLat": "Máy xúc lật", "MayUi": "Máy ủi",
@@ -80,8 +80,8 @@ def doc_csv(src):
             trang = 0
         it = {"id": r.get("ID", ""), "t": tieu_de, "h": r.get("Hãng", ""), "m": model, "may": may, "tl": tl,
               "ht": ht, "nn": r.get("Ngôn ngữ") or "EN", "p": trang, "scan": r.get("Dạng PDF") == "Scan",
-              "kw": r.get("Từ khóa VN", ""), "f": fid}
-        it["s"] = bo_dau(" ".join([it["t"], it["h"], it["m"], may, tl, ht, it["kw"], r.get("Tên file", ""),
+              "kw": r.get("Từ khóa VN", ""), "c": r.get("Mã áp dụng", ""), "f": fid}
+        it["s"] = bo_dau(" ".join([it["t"], it["h"], it["m"], may, tl, ht, it["kw"], it["c"], r.get("Tên file", ""),
                                    r.get("Thư mục Drive", "")]))
         items.append(it)
     items.sort(key=lambda x: (x["may"], x["h"], x["m"], x["tl"]))
@@ -93,7 +93,8 @@ def li(it):
     meta = " · ".join(x for x in (it["id"], it["may"], it["tl"], f'{it["p"]} trang' if it["p"] else "", NN.get(it["nn"], it["nn"])) if x)
     return (f'<li class="item" data-id="{e(it["id"])}"><a href="?id={e(it["id"])}" class="open">'
             f'<span class="tt">{e(it["t"])}</span><span class="meta">{e(meta)}</span>'
-            f'<span class="kw">{e(it["kw"])}</span></a></li>')
+            + (f'<span class="codes">Áp dụng: {e(it["c"])}</span>' if it["c"] else "")
+            + f'<span class="kw">{e(it["kw"])}</span></a></li>')
 
 
 TEMPLATE = r"""<!doctype html>
@@ -125,6 +126,7 @@ ul{list-style:none;margin:0;padding:0}
 .item.sel{border-color:var(--acc);background:var(--acc2)}
 .open{display:block;padding:10px 14px;color:inherit;text-decoration:none}
 .tt{display:block;font-weight:600}.meta{display:block;color:var(--mute);font-size:13px}
+.codes{display:block;font-size:12px;color:var(--acc);font-family:ui-monospace,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kw{display:block;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #viewer{display:none;position:sticky;top:120px;height:calc(100vh - 140px);background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-direction:column}
 main.split #viewer{display:flex}
@@ -183,10 +185,11 @@ mays.forEach(m => $('#chips').append(chip(m,'may',m))); tls.forEach(t => $('#chi
 let timer;
 $('#q').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 80); });
 function render(){
-  const toks = norm($('#q').value).split(/\s+/).filter(Boolean);
+  const toks = norm($('#q').value).split(/[\s,;]+/).filter(Boolean);
+  const cmp = t => t.replace(/[-\/._]/g, '');   // d110s5 = D110S-5, pc2008 = PC200-8
   let n = 0;
   for (const d of DATA){
-    const ok = (!fMay || d.may===fMay) && (!fTl || d.tl===fTl) && toks.every(t => d.s.includes(t));
+    const ok = (!fMay || d.may===fMay) && (!fTl || d.tl===fTl) && toks.every(t => d.s.includes(t) || (d.sc || (d.sc = cmp(d.s))).includes(cmp(t)));
     elById[d.id].hidden = !ok; if (ok) n++;
   }
   document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', (c.dataset.g==='may'?fMay:fTl)===c.dataset.v));
