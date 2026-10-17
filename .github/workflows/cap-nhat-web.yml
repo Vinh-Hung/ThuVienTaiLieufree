@@ -1,0 +1,24 @@
+# Tự tạo lại index.html từ Google Sheet mỗi ngày (4:30 sáng giờ VN) — có thể bấm chạy tay ở tab Actions
+name: Cap nhat web
+on:
+  schedule:
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tao index.html tu Sheet
+        run: python tao_web.py
+      - name: Luu len repo neu co thay doi
+        run: |
+          git config user.name "cap-nhat-tu-dong"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && echo "Khong co thay doi" || (git commit -m "Cap nhat danh muc $(date +%F)" && git push)
